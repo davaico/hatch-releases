@@ -24,6 +24,14 @@ Choose an install directory:
 curl -fsSL https://raw.githubusercontent.com/davaico/hatch-releases/main/install.sh | HATCH_INSTALL_DIR="$HOME/bin" sh
 ```
 
+By default, the installer writes to `/usr/local/bin`. If that directory is not writable, it uses `sudo`.
+
+To explicitly allow a user-local fallback instead:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/davaico/hatch-releases/main/install.sh | HATCH_ALLOW_USER_INSTALL=1 sh
+```
+
 ## Update
 
 ```sh
@@ -47,6 +55,7 @@ The installer supports these environment variables:
 
 - `HATCH_VERSION`: install a specific SemVer tag instead of the latest release.
 - `HATCH_INSTALL_DIR`: install into a custom directory.
+- `HATCH_ALLOW_USER_INSTALL`: set to `1` to fall back to `$HOME/.local/bin` when the default system install directory is not writable and `sudo` should not be used.
 - `HATCH_REPOSITORY`: override the GitHub release repository.
 - `HATCH_RELEASE_BASE_URL`: override the release asset base URL.
 - `HATCH_LATEST_URL`: override the latest-release API URL.
