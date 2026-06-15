@@ -5,8 +5,6 @@ HATCH_REPOSITORY="${HATCH_REPOSITORY:-davaico/hatch-releases}"
 HATCH_RELEASE_BASE_URL="${HATCH_RELEASE_BASE_URL:-https://github.com/${HATCH_REPOSITORY}/releases/download}"
 HATCH_LATEST_URL="${HATCH_LATEST_URL:-https://api.github.com/repos/${HATCH_REPOSITORY}/releases/latest}"
 HATCH_SYSTEM_INSTALL_DIR="${HATCH_SYSTEM_INSTALL_DIR:-/usr/local/bin}"
-HATCH_INSTALL_WITH_SUDO=0
-HATCH_RESOLVED_INSTALL_DIR=""
 
 die() {
 	printf 'hatch install: %s\n' "$*" >&2
@@ -69,51 +67,16 @@ verify_checksum() {
 	fi
 }
 
-can_write_or_create_dir() {
-	dir="$1"
-	if [ -d "$dir" ]; then
-		[ -w "$dir" ]
-		return
-	fi
-	parent="$dir"
-	while [ ! -d "$parent" ]; do
-		next_parent="$(dirname "$parent")"
-		if [ "$next_parent" = "$parent" ]; then
-			return 1
-		fi
-		parent="$next_parent"
-	done
-	[ -w "$parent" ]
-}
-
 choose_install_dir() {
 	if [ "${HATCH_INSTALL_DIR:-}" ]; then
-		if can_write_or_create_dir "$HATCH_INSTALL_DIR"; then
-			HATCH_INSTALL_WITH_SUDO=0
-		elif command -v sudo >/dev/null 2>&1; then
-			HATCH_INSTALL_WITH_SUDO=1
-		else
-			die "$HATCH_INSTALL_DIR is not writable and sudo is not available"
-		fi
-		HATCH_RESOLVED_INSTALL_DIR="$HATCH_INSTALL_DIR"
+		printf '%s\n' "$HATCH_INSTALL_DIR"
 		return
 	fi
-	if [ "${HATCH_TEST_FORCE_SYSTEM_NOT_WRITABLE:-}" != "1" ] && [ -d "$HATCH_SYSTEM_INSTALL_DIR" ] && [ -w "$HATCH_SYSTEM_INSTALL_DIR" ]; then
-		HATCH_INSTALL_WITH_SUDO=0
-		HATCH_RESOLVED_INSTALL_DIR="$HATCH_SYSTEM_INSTALL_DIR"
+	if [ -d "$HATCH_SYSTEM_INSTALL_DIR" ] && [ -w "$HATCH_SYSTEM_INSTALL_DIR" ]; then
+		printf '%s\n' "$HATCH_SYSTEM_INSTALL_DIR"
 		return
 	fi
-	if [ "${HATCH_ALLOW_USER_INSTALL:-}" = "1" ]; then
-		HATCH_INSTALL_WITH_SUDO=0
-		HATCH_RESOLVED_INSTALL_DIR="$HOME/.local/bin"
-		return
-	fi
-	if command -v sudo >/dev/null 2>&1; then
-		HATCH_INSTALL_WITH_SUDO=1
-		HATCH_RESOLVED_INSTALL_DIR="$HATCH_SYSTEM_INSTALL_DIR"
-		return
-	fi
-	die "$HATCH_SYSTEM_INSTALL_DIR is not writable and sudo is not available; set HATCH_ALLOW_USER_INSTALL=1 to install to \$HOME/.local/bin"
+	printf '%s\n' "$HOME/.local/bin"
 }
 
 install_hatch() {
@@ -125,12 +88,7 @@ install_hatch() {
 	checksums="$tmpdir/checksums.txt"
 	extract_dir="$tmpdir/extract"
 
-	mkdir -p "$extract_dir"
-	if [ "$HATCH_INSTALL_WITH_SUDO" = "1" ]; then
-		sudo install -d -m 0755 "$install_dir"
-	else
-		mkdir -p "$install_dir"
-	fi
+	mkdir -p "$extract_dir" "$install_dir"
 	curl -fsSL "$HATCH_RELEASE_BASE_URL/$version/$asset" -o "$archive"
 	curl -fsSL "$HATCH_RELEASE_BASE_URL/$version/checksums.txt" -o "$checksums"
 	verify_checksum "$asset" "$archive" "$checksums"
@@ -146,18 +104,9 @@ install_hatch() {
 
 	target="$install_dir/hatch"
 	tmp_target="$install_dir/.hatch.tmp.$$"
-	if [ "$HATCH_INSTALL_WITH_SUDO" = "1" ]; then
-		local_tmp="$tmpdir/hatch.tmp"
-		cp "$binary" "$local_tmp"
-		chmod 0755 "$local_tmp"
-		sudo cp "$local_tmp" "$tmp_target"
-		sudo chmod 0755 "$tmp_target"
-		sudo mv "$tmp_target" "$target"
-	else
-		cp "$binary" "$tmp_target"
-		chmod 0755 "$tmp_target"
-		mv "$tmp_target" "$target"
-	fi
+	cp "$binary" "$tmp_target"
+	chmod 0755 "$tmp_target"
+	mv "$tmp_target" "$target"
 	printf 'Installed Hatch %s to %s\n' "$version" "$target"
 }
 
@@ -165,8 +114,7 @@ main() {
 	detect_platform
 	version="$(latest_version)"
 	asset="hatch_${HATCH_OS}_${HATCH_ARCH}.tar.gz"
-	choose_install_dir
-	install_dir="$HATCH_RESOLVED_INSTALL_DIR"
+	install_dir="$(choose_install_dir)"
 	tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/hatch-install.XXXXXX")"
 	trap 'rm -rf "$tmpdir"' EXIT INT TERM
 
