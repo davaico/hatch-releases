@@ -38,6 +38,41 @@ curl -fsSL https://github.com/davaico/hatch-releases/releases/latest/download/in
 hatch update
 ```
 
+## Usage
+
+Open the interactive project manager:
+
+```sh
+hatch
+```
+
+Use the command surface for scripts and repeatable workflows:
+
+```sh
+hatch project create \
+  --name "Demo Project" \
+  --repo https://github.com/OWNER/REPO.git \
+  --compass-project compass-project-id \
+  --yes
+
+hatch project list
+hatch agent list --project "Demo Project"
+hatch agent connect <agent>
+```
+
+Hatch requires a shared Postgres database for the local CLI/TUI project and agent inventory. On first interactive launch, `hatch` prompts for the database URL, verifies the connection and schema, stores the URL in local settings, then opens the normal TUI. For non-interactive setup, install `goose` separately, point Hatch at Postgres, and apply the schema manually:
+
+```sh
+export HATCH_DATABASE_URL="postgres://hatch_user:password@db.example.com:5432/hatch?sslmode=require"
+hatch settings set database-url "$HATCH_DATABASE_URL"
+goose -dir internal/db/migrations postgres "$HATCH_DATABASE_URL" up
+hatch db import-local
+```
+
+Apply migrations manually with `goose` before using the shared database; the Hatch CLI does not run database migrations. When `database-url` is saved in local Hatch settings, or when `HATCH_DATABASE_URL` / `--database-url` is set, the CLI/TUI use Postgres directly. Without a configured and migrated database, local project/agent commands fail with setup guidance. The database stores inventory, host metadata, setup history, runtime events, and latest orchestrator state; it does not store GitHub tokens, Compass login tokens, Tailscale client secrets, OpenCode passwords, SSH private keys, or generated agent credentials. Hatch treats the database URL as sensitive and masks it in `hatch settings list`.
+
+Run `hatch project --help` and `hatch agent --help` for the full command reference. Create and repair commands accept secret flags such as `--compass-token`, `--github-token`, `--tailscale-client-id`, and `--tailscale-client-secret`; when omitted, Hatch reads the matching environment variables.
+
 ## Supported Platforms
 
 Each release includes checksum-verified `tar.gz` archives for:
