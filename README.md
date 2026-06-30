@@ -71,7 +71,7 @@ hatch db import-local
 
 Apply migrations manually with `goose` before using the shared database; the Hatch CLI does not run database migrations. When `database-url` is saved in local Hatch settings, or when `HATCH_DATABASE_URL` / `--database-url` is set, the CLI/TUI use Postgres directly. Without a configured and migrated database, local project/agent commands fail with setup guidance. The database stores inventory, host metadata, setup history, runtime events, and latest orchestrator state; it does not store GitHub tokens, Compass login tokens, Tailscale client secrets, OpenCode passwords, SSH private keys, or generated agent credentials. Hatch treats the database URL as sensitive and masks it in `hatch settings list`.
 
-Run `hatch project --help` and `hatch agent --help` for the full command reference. Create and repair commands accept secret flags such as `--compass-token`, `--github-token`, `--tailscale-client-id`, and `--tailscale-client-secret`; when omitted, Hatch reads the matching environment variables.
+Run `hatch project --help` and `hatch agent --help` for the full command reference. Create and repair commands accept secret flags such as `--compass-token`, `--github-token`, `--tailscale-client-id`, and `--tailscale-client-secret`; when omitted, Hatch reads the matching environment variables. Hatch-managed Hetzner agents use Tailscale SSH and do not require local SSH key files; ensure the local device is authorized by Tailscale SSH ACLs to connect to `tag:hatch-agent` as the agent SSH user.
 
 ## Supported Platforms
 
